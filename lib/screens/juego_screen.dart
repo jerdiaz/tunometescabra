@@ -5,36 +5,20 @@ import '../providers/game_provider.dart';
 import '../widgets/tablero_widget.dart';
 import '../widgets/jugador_widget.dart';
 
-class JuegoScreen extends StatefulWidget {
+// Convertido a StatelessWidget ya que no necesita manejar su propio estado.
+class JuegoScreen extends StatelessWidget {
   const JuegoScreen({super.key});
 
   @override
-  State<JuegoScreen> createState() => _JuegoScreenState();
-}
-
-class _JuegoScreenState extends State<JuegoScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // Inicia el juego automáticamente una vez que la pantalla se ha cargado.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<GameProvider>().startGame();
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    // Usamos Consumer para reaccionar a los cambios y mostrar diálogos.
     return Consumer<GameProvider>(
       builder: (context, gameProvider, child) {
         final gameState = gameProvider.gameState;
 
-        // Lógica para mostrar mensajes emergentes (diálogos) de forma segura.
+        // Muestra diálogos de mensajes cuando sea necesario.
         if (gameProvider.message != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            // Prevenimos mostrar un diálogo si ya hay uno en pantalla.
             if (ModalRoute.of(context)?.isCurrent != true) return;
-
             showDialog(
               context: context,
               barrierDismissible: false,
@@ -46,9 +30,10 @@ class _JuegoScreenState extends State<JuegoScreen> {
                     onPressed: () {
                       final isGameOver = gameProvider.gameState.isGameOver;
                       Navigator.of(ctx).pop(); // Cierra el diálogo
-                      gameProvider.clearMessage(); // Limpia el mensaje para que no vuelva a aparecer.
+                      gameProvider.clearMessage(); // Limpia el mensaje
                       if (isGameOver) {
-                        gameProvider.startGame(); // Reinicia el juego si ha terminado.
+                        // Si el juego ha terminado, vuelve al menú principal.
+                        Navigator.of(context).pop();
                       }
                     },
                     child: const Text('Entendido'),
@@ -62,28 +47,39 @@ class _JuegoScreenState extends State<JuegoScreen> {
         return Scaffold(
           appBar: AppBar(
             backgroundColor: Colors.grey[900],
-            title: const Text('Dominó con Trampa y Castigo'),
+            title: const Text('Tunometescabra'),
             centerTitle: true,
+            // Agregamos un botón para volver al menú principal
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
           ),
           body: Column(
             children: [
-              // Barra de información superior
               Container(
                 padding: const EdgeInsets.all(12.0),
                 color: Colors.grey[800],
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    Text('Turno: Jugador ${gameState.currentPlayerIndex + 1}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    Text('Fichas para Robar: ${gameState.boneyard.length}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text(
+                        'Turno: Jugador ${gameState.currentPlayerIndex + 1}',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)
+                    ),
+                    Text(
+                        'Fichas para Robar: ${gameState.boneyard.length}',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)
+                    ),
                   ],
                 ),
               ),
-              // El tablero ocupa el espacio central expandido
+              // Usamos const porque estos widgets ya no cambian.
               const Expanded(
                 child: TableroWidget(),
               ),
-              // La mano del jugador actual en la parte inferior
               const JugadorWidget(),
             ],
           ),

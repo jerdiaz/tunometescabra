@@ -65,38 +65,25 @@ class FichaWidget extends StatelessWidget {
   }
 }
 
-// Widget auxiliar para dibujar los puntos (pips)
 class _PipGrid extends StatelessWidget {
   final int value;
   final double pipSize;
   const _PipGrid({required this.value, required this.pipSize});
 
-  // CORRECCIÓN CLAVE: Esta matriz ahora representa la visibilidad de cada punto
-  // en una cuadrícula de 3x3 para los números del 1 al 6.
   static const List<List<bool>> _pipLayouts = [
-    // 0
     [false, false, false, false, false, false, false, false, false],
-    // 1
     [false, false, false, false, true,  false, false, false, false],
-    // 2
     [true,  false, false, false, false, false, false, false, true ],
-    // 3
     [true,  false, false, false, true,  false, false, false, true ],
-    // 4
     [true,  false, true,  false, false, false, true,  false, true ],
-    // 5
     [true,  false, true,  false, true,  false, true,  false, true ],
-    // 6
     [true,  false, true,  true,  false, true,  true,  false, true ],
   ];
 
   @override
   Widget build(BuildContext context) {
-    // Si el valor está fuera de rango, no dibuja nada.
     if (value < 0 || value > 6) return Container();
-
     final layout = _pipLayouts[value];
-
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
@@ -110,7 +97,6 @@ class _PipGrid extends StatelessWidget {
             height: pipSize,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              // El punto solo es visible si el layout lo indica.
               color: layout[index] ? Colors.black : Colors.transparent,
             ),
           ),
@@ -119,4 +105,3 @@ class _PipGrid extends StatelessWidget {
     );
   }
 }
-

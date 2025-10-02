@@ -9,12 +9,9 @@ class TableroWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Escuchamos los cambios del GameProvider para reconstruir el tablero.
     final gameProvider = context.watch<GameProvider>();
     final boardChain = gameProvider.gameState.boardChain;
-
-    // Definimos un tamaño base para las fichas en el tablero.
-    const double pieceWidth = 55.0; // Ancho de la ficha vertical
+    const double pieceWidth = 55.0;
 
     return Container(
       width: double.infinity,
@@ -30,21 +27,13 @@ class TableroWidget extends StatelessWidget {
           : ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: boardChain.length,
-        // CORRECCIÓN: Se eliminó 'itemExtent'.
-        // Ahora el ListView permite que cada ficha tenga su propio ancho,
-        // ya sea vertical (ancho normal) u horizontal (ancho doble).
         itemBuilder: (context, index) {
           final ficha = boardChain[index];
-
-          // Las fichas dobles se dibujan verticalmente, las otras horizontalmente.
           final isDouble = ficha.isDouble;
 
           return Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4.0),
-              // Pasamos el tamaño correcto al FichaWidget.
-              // El FichaWidget ya sabe cómo calcular su propio tamaño
-              // basado en si es horizontal o no.
               child: FichaWidget(
                 ficha: ficha,
                 isHorizontal: !isDouble,
@@ -57,4 +46,3 @@ class TableroWidget extends StatelessWidget {
     );
   }
 }
-

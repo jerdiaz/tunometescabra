@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/ficha.dart';
 import '../models/juego.dart';
+import '../models/jugador.dart'; // <-- ESTA ES LA LÍNEA QUE FALTABA
 import '../providers/game_provider.dart';
 import 'ficha_widget.dart';
 
@@ -28,7 +29,6 @@ class _JugadorWidgetState extends State<JugadorWidget> {
               onPressed: () {
                 Navigator.of(dialogContext).pop();
                 if (_selectedPiece != null) {
-                  // Llamada corregida para usar el enum PlayEnd.left
                   gameProvider.playPiece(_selectedPiece!, PlayEnd.left);
                   setState(() => _selectedPiece = null);
                 }
@@ -39,7 +39,6 @@ class _JugadorWidgetState extends State<JugadorWidget> {
               onPressed: () {
                 Navigator.of(dialogContext).pop();
                 if (_selectedPiece != null) {
-                  // Llamada corregida para usar el enum PlayEnd.right
                   gameProvider.playPiece(_selectedPiece!, PlayEnd.right);
                   setState(() => _selectedPiece = null);
                 }
@@ -51,17 +50,37 @@ class _JugadorWidgetState extends State<JugadorWidget> {
     );
   }
 
+  /// Revisa si el jugador actual tiene alguna jugada válida en su mano.
+  bool _playerHasValidMoves(Player player, List<DominoPiece> boardChain) {
+    if (boardChain.isEmpty) {
+      return player.hand.isNotEmpty;
+    }
+
+    final leftValue = boardChain.first.a;
+    final rightValue = boardChain.last.b;
+
+    for (var piece in player.hand) {
+      if (piece.a == leftValue || piece.b == leftValue || piece.a == rightValue || piece.b == rightValue) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final gameProvider = context.watch<GameProvider>();
     final gameState = gameProvider.gameState;
 
-    // Manejo de estado inicial mientras se carga el juego.
     if (gameState.players.isEmpty || gameState.players.length <= gameState.currentPlayerIndex) {
       return const SizedBox(height: 250, child: Center(child: CircularProgressIndicator()));
     }
 
     final currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    final canDraw = gameState.boneyard.isNotEmpty;
+    final bool canPlay = _playerHasValidMoves(currentPlayer, gameState.boardChain);
+    final bool showPassButton = !canPlay && !canDraw;
 
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -132,7 +151,7 @@ class _JugadorWidgetState extends State<JugadorWidget> {
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: Colors.grey.shade700,
                 ),
-                onPressed: gameState.boneyard.isEmpty
+                onPressed: !canDraw
                     ? null
                     : () {
                   gameProvider.drawPiece();
@@ -154,6 +173,19 @@ class _JugadorWidgetState extends State<JugadorWidget> {
                   setState(() { _selectedPiece = null; });
                 },
               ),
+              if (showPassButton)
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.skip_next),
+                  label: const Text('Pasar'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    gameProvider.passTurn();
+                    setState(() { _selectedPiece = null; });
+                  },
+                ),
             ],
           ),
         ],
@@ -161,4 +193,3 @@ class _JugadorWidgetState extends State<JugadorWidget> {
     );
   }
 }
-

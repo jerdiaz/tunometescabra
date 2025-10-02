@@ -8,7 +8,7 @@ enum PlayEnd { left, right }
 @immutable
 class LastMove {
   final int playerIndex;
-  final DominoPiece piece; // <--- El campo se llama 'piece'
+  final DominoPiece piece;
   final bool wasValid;
 
   const LastMove({
@@ -38,9 +38,15 @@ class GameState {
     this.winnerIndex,
   });
 
+  // ----- ESTA ES LA CORRECCIÓN CLAVE -----
+  // Ahora el estado inicial simula una partida de 2 jugadores por defecto.
+  // Esto evita que la UI se quede "cargando" antes de que el juego real comience.
   factory GameState.initial() {
-    return GameState(
-      players: [const Player(id: 0, hand: []), const Player(id: 1, hand: [])],
+    return const GameState(
+      players: [
+        Player(id: 0, hand: []),
+        Player(id: 1, hand: [])
+      ],
       boneyard: [],
       boardChain: [],
       currentPlayerIndex: 0,
@@ -68,3 +74,4 @@ class GameState {
     );
   }
 }
+
