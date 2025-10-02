@@ -1,55 +1,78 @@
+// FILE: lib/providers/game_provider.dart
 import 'package:flutter/foundation.dart';
-import '../models/ficha.dart';
 import '../models/juego.dart';
+import '../models/ficha.dart';
 import '../utils/logica_juego.dart';
 
+// Clase simple para manejar los mensajes que se mostrarán en diálogos.
+class GameMessage {
+  final String title;
+  final String body;
+  GameMessage({required this.title, required this.body});
+}
+
 class GameProvider with ChangeNotifier {
-  // Instancia privada de la lógica del juego.
-  final GameLogic _gameLogic = GameLogic();
-
-  // Estado privado del juego. La UI no puede modificarlo directamente.
   late GameState _gameState;
+  final GameLogic _logic = GameLogic();
+  GameMessage? _message;
 
-  // Getter público para que la UI pueda leer el estado actual.
+  // Getters públicos para que la UI no pueda modificar el estado directamente.
   GameState get gameState => _gameState;
+  GameMessage? get message => _message;
 
   GameProvider() {
-    // Inicializa el juego cuando se crea el provider.
-    _startNewGame();
+    // Inicializa el estado al crear el provider.
+    _gameState = GameState.initial();
   }
 
-  /// Inicia una nueva partida.
-  void _startNewGame() {
-    _gameState = _gameLogic.startGame();
-    // No es necesario notificar a los oyentes aquí, ya que el estado se establece
-    // antes de que la UI se construya por primera vez.
+  void startGame() {
+    _gameState = _logic.startGame();
+    notifyListeners();
   }
 
-  /// Reinicia el juego a su estado inicial.
-  void restartGame() {
-    _startNewGame();
-    notifyListeners(); // Notifica a la UI para que se reconstruya con el nuevo juego.
-  }
-
-  /// Llama a la lógica para jugar una ficha y actualiza el estado.
-  void playPiece(DominoPiece piece, String side) {
-    _gameState = _gameLogic.playPiece(
+  void playPiece(DominoPiece piece, PlayEnd end) {
+    // Se corrige la llamada para que coincida con la definición en GameLogic.
+    _gameState = _logic.playPiece(
       currentState: _gameState,
-      pieceToPlay: piece,
-      side: side,
+      piece: piece,
+      end: end,
     );
-    notifyListeners(); // Notifica a la UI sobre el cambio.
+    _checkForEndGame(); // Revisa si la partida terminó después de la jugada.
+    notifyListeners();
   }
 
-  /// Llama a la lógica para robar una ficha y actualiza el estado.
   void drawPiece() {
-    _gameState = _gameLogic.drawPiece(currentState: _gameState);
+    _gameState = _logic.drawPiece(currentState: _gameState);
     notifyListeners();
   }
 
-  /// Llama a la lógica para procesar una acusación y actualiza el estado.
   void accuse() {
-    _gameState = _gameLogic.accuse(currentState: _gameState);
+    // 'accuse' ahora devuelve un AccusationResult, no un GameState.
+    final result = _logic.accuse(currentState: _gameState);
+
+    // Extraemos el nuevo estado del resultado.
+    _gameState = result.newState;
+
+    // Creamos un mensaje para la UI basado en si hubo trampa.
+    if (result.wasCheating) {
+      _message = GameMessage(title: '¡Trampa Descubierta!', body: 'El jugador anterior hizo trampa y roba 2 fichas de castigo.');
+    } else {
+      _message = GameMessage(title: '¡Acusación Falsa!', body: 'La jugada era válida. Robas 2 fichas como castigo.');
+    }
     notifyListeners();
+  }
+
+  /// Revisa si la partida ha terminado y crea el mensaje de victoria.
+  void _checkForEndGame() {
+    if (_gameState.isGameOver) {
+      _message = GameMessage(title: '¡Fin del Juego!', body: '¡El Jugador ${_gameState.winnerIndex! + 1} ha ganado!');
+    }
+  }
+
+  /// Limpia el mensaje actual para que el diálogo no se muestre repetidamente.
+  void clearMessage() {
+    _message = null;
+    // No notificamos a los listeners para evitar reconstrucciones innecesarias.
   }
 }
+

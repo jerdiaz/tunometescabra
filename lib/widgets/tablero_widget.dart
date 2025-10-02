@@ -1,3 +1,4 @@
+// FILE: lib/widgets/tablero_widget.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
@@ -8,38 +9,52 @@ class TableroWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Escucha al provider para obtener la cadena de fichas del tablero.
-    final boardChain = context.watch<GameProvider>().gameState.boardChain;
+    // Escuchamos los cambios del GameProvider para reconstruir el tablero.
+    final gameProvider = context.watch<GameProvider>();
+    final boardChain = gameProvider.gameState.boardChain;
 
-    return Expanded(
-      child: Container(
-        color: Colors.green[800],
-        padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 16.0),
-        child: Center(
-          child: boardChain.isEmpty
-              ? const Text(
-            'El tablero está vacío. ¡El primer jugador empieza!',
-            style: TextStyle(color: Colors.white, fontSize: 18),
-          )
-          // Usamos un ListView para que el tablero sea desplazable si crece mucho.
-              : ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: boardChain.length,
-            itemBuilder: (context, index) {
-              final ficha = boardChain[index];
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                // Las fichas en el tablero siempre son horizontales.
-                child: FichaWidget(
-                  ficha: ficha,
-                  isHorizontal: true,
-                  width: 100,
-                ),
-              );
-            },
-          ),
+    // Definimos un tamaño base para las fichas en el tablero.
+    const double pieceWidth = 55.0; // Ancho de la ficha vertical
+
+    return Container(
+      width: double.infinity,
+      color: Colors.green.shade800,
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      child: boardChain.isEmpty
+          ? const Center(
+        child: Text(
+          'El tablero está vacío. ¡Haz la primera jugada!',
+          style: TextStyle(color: Colors.white70, fontSize: 16),
         ),
+      )
+          : ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: boardChain.length,
+        // CORRECCIÓN: Se eliminó 'itemExtent'.
+        // Ahora el ListView permite que cada ficha tenga su propio ancho,
+        // ya sea vertical (ancho normal) u horizontal (ancho doble).
+        itemBuilder: (context, index) {
+          final ficha = boardChain[index];
+
+          // Las fichas dobles se dibujan verticalmente, las otras horizontalmente.
+          final isDouble = ficha.isDouble;
+
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              // Pasamos el tamaño correcto al FichaWidget.
+              // El FichaWidget ya sabe cómo calcular su propio tamaño
+              // basado en si es horizontal o no.
+              child: FichaWidget(
+                ficha: ficha,
+                isHorizontal: !isDouble,
+                width: pieceWidth,
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 }
+

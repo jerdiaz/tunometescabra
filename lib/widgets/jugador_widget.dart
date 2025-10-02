@@ -1,10 +1,8 @@
 // FILE: lib/widgets/jugador_widget.dart
-// Muestra la mano del jugador actual y los botones de acción.
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/ficha.dart';
-import '../models/juego.dart'; // <-- ESTA ES LA LÍNEA CRUCIAL QUE RESUELVE EL ERROR
+import '../models/juego.dart';
 import '../providers/game_provider.dart';
 import 'ficha_widget.dart';
 
@@ -18,25 +16,21 @@ class JugadorWidget extends StatefulWidget {
 class _JugadorWidgetState extends State<JugadorWidget> {
   DominoPiece? _selectedPiece;
 
-  /// Muestra un diálogo para que el jugador elija dónde jugar la ficha.
   void _showPlayOptionsDialog(BuildContext context, GameProvider gameProvider) {
     showDialog(
       context: context,
-      barrierDismissible: false, // Evita que se cierre al tocar fuera
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: const Text('¿Dónde jugar la ficha?'),
-          content: const Text('Elige a qué lado del tablero quieres añadir la ficha.'),
           actions: <Widget>[
             TextButton(
               child: const Text('Izquierda'),
               onPressed: () {
                 Navigator.of(dialogContext).pop();
                 if (_selectedPiece != null) {
+                  // Llamada corregida para usar el enum PlayEnd.left
                   gameProvider.playPiece(_selectedPiece!, PlayEnd.left);
-                  setState(() {
-                    _selectedPiece = null;
-                  });
+                  setState(() => _selectedPiece = null);
                 }
               },
             ),
@@ -45,10 +39,9 @@ class _JugadorWidgetState extends State<JugadorWidget> {
               onPressed: () {
                 Navigator.of(dialogContext).pop();
                 if (_selectedPiece != null) {
+                  // Llamada corregida para usar el enum PlayEnd.right
                   gameProvider.playPiece(_selectedPiece!, PlayEnd.right);
-                  setState(() {
-                    _selectedPiece = null;
-                  });
+                  setState(() => _selectedPiece = null);
                 }
               },
             ),
@@ -62,8 +55,13 @@ class _JugadorWidgetState extends State<JugadorWidget> {
   Widget build(BuildContext context) {
     final gameProvider = context.watch<GameProvider>();
     final gameState = gameProvider.gameState;
+
+    // Manejo de estado inicial mientras se carga el juego.
+    if (gameState.players.isEmpty || gameState.players.length <= gameState.currentPlayerIndex) {
+      return const SizedBox(height: 250, child: Center(child: CircularProgressIndicator()));
+    }
+
     final currentPlayer = gameState.players[gameState.currentPlayerIndex];
-    final lastMove = gameState.lastMove;
 
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -102,11 +100,7 @@ class _JugadorWidgetState extends State<JugadorWidget> {
                     isSelected: _selectedPiece == ficha,
                     onTap: () {
                       setState(() {
-                        if (_selectedPiece == ficha) {
-                          _selectedPiece = null;
-                        } else {
-                          _selectedPiece = ficha;
-                        }
+                        _selectedPiece = (_selectedPiece == ficha) ? null : ficha;
                       });
                     },
                   ),
@@ -124,6 +118,7 @@ class _JugadorWidgetState extends State<JugadorWidget> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.grey.shade700,
                 ),
                 onPressed: _selectedPiece == null
                     ? null
@@ -135,6 +130,7 @@ class _JugadorWidgetState extends State<JugadorWidget> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.grey.shade700,
                 ),
                 onPressed: gameState.boneyard.isEmpty
                     ? null
@@ -149,8 +145,9 @@ class _JugadorWidgetState extends State<JugadorWidget> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
                   foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.grey.shade700,
                 ),
-                onPressed: lastMove == null
+                onPressed: gameState.lastMove == null
                     ? null
                     : () {
                   gameProvider.accuse();
@@ -164,3 +161,4 @@ class _JugadorWidgetState extends State<JugadorWidget> {
     );
   }
 }
+

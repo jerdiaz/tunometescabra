@@ -5,26 +5,30 @@ import '../models/ficha.dart';
 class FichaWidget extends StatelessWidget {
   final DominoPiece ficha;
   final double width;
-  final bool isHorizontal;
   final bool isSelected;
+  final bool isHorizontal;
   final VoidCallback? onTap;
 
   const FichaWidget({
     super.key,
     required this.ficha,
-    this.width = 50,
-    this.isHorizontal = false,
+    this.width = 60,
     this.isSelected = false,
+    this.isHorizontal = false,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final double height = isHorizontal ? width : width * 2;
+    final double actualWidth = isHorizontal ? width * 2 : width;
+    final double pipSize = width * 0.15;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: isHorizontal ? width * 2 : width,
-        height: isHorizontal ? width : width * 2,
+        width: actualWidth,
+        height: height,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
@@ -34,88 +38,85 @@ class FichaWidget extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              spreadRadius: 1,
+              color: isSelected ? Colors.blueAccent.withOpacity(0.5) : Colors.black.withOpacity(0.2),
               blurRadius: 5,
-              offset: const Offset(0, 3),
-            ),
+              spreadRadius: 1,
+            )
           ],
         ),
         child: isHorizontal
-            ? Row(children: _buildHalves())
-            : Column(children: _buildHalves()),
+            ? Row(children: _buildHalves(pipSize))
+            : Column(children: _buildHalves(pipSize)),
       ),
     );
   }
 
-  List<Widget> _buildHalves() {
+  List<Widget> _buildHalves(double pipSize) {
     return [
-      Expanded(child: _PipGrid(value: ficha.a)),
+      Expanded(child: _PipGrid(value: ficha.a, pipSize: pipSize)),
       Container(
         width: isHorizontal ? 2 : double.infinity,
         height: isHorizontal ? double.infinity : 2,
         color: Colors.black54,
-        margin: isHorizontal
-            ? const EdgeInsets.symmetric(vertical: 6)
-            : const EdgeInsets.symmetric(horizontal: 6),
+        margin: isHorizontal ? const EdgeInsets.symmetric(vertical: 8) : const EdgeInsets.symmetric(horizontal: 8),
       ),
-      Expanded(child: _PipGrid(value: ficha.b)),
+      Expanded(child: _PipGrid(value: ficha.b, pipSize: pipSize)),
     ];
   }
 }
 
+// Widget auxiliar para dibujar los puntos (pips)
 class _PipGrid extends StatelessWidget {
   final int value;
-  const _PipGrid({required this.value});
+  final double pipSize;
+  const _PipGrid({required this.value, required this.pipSize});
+
+  // CORRECCIÓN CLAVE: Esta matriz ahora representa la visibilidad de cada punto
+  // en una cuadrícula de 3x3 para los números del 1 al 6.
+  static const List<List<bool>> _pipLayouts = [
+    // 0
+    [false, false, false, false, false, false, false, false, false],
+    // 1
+    [false, false, false, false, true,  false, false, false, false],
+    // 2
+    [true,  false, false, false, false, false, false, false, true ],
+    // 3
+    [true,  false, false, false, true,  false, false, false, true ],
+    // 4
+    [true,  false, true,  false, false, false, true,  false, true ],
+    // 5
+    [true,  false, true,  false, true,  false, true,  false, true ],
+    // 6
+    [true,  false, true,  true,  false, true,  true,  false, true ],
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(4.0),
-      child: GridView.builder(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-        ),
-        itemCount: 9,
-        physics: const NeverScrollableScrollPhysics(),
-        itemBuilder: (context, index) {
-          return _buildPip(index);
-        },
+    // Si el valor está fuera de rango, no dibuja nada.
+    if (value < 0 || value > 6) return Container();
+
+    final layout = _pipLayouts[value];
+
+    return GridView.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
       ),
+      itemCount: 9,
+      physics: const NeverScrollableScrollPhysics(),
+      itemBuilder: (context, index) {
+        return Center(
+          child: Container(
+            width: pipSize,
+            height: pipSize,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              // El punto solo es visible si el layout lo indica.
+              color: layout[index] ? Colors.black : Colors.transparent,
+            ),
+          ),
+        );
+      },
     );
   }
-
-  Widget? _buildPip(int index) {
-    bool isVisible = false;
-    switch (value) {
-      case 1:
-        if (index == 4) isVisible = true;
-        break;
-      case 2:
-        if (index == 0 || index == 8) isVisible = true;
-        break;
-      case 3:
-        if (index == 0 || index == 4 || index == 8) isVisible = true;
-        break;
-      case 4:
-        if (index == 0 || index == 2 || index == 6 || index == 8) isVisible = true;
-        break;
-      case 5:
-        if (index == 0 || index == 2 || index == 4 || index == 6 || index == 8) isVisible = true;
-        break;
-      case 6:
-        if (index == 0 || index == 2 || index == 3 || index == 5 || index == 6 || index == 8) isVisible = true;
-        break;
-    }
-
-    return isVisible
-        ? Container(
-      margin: const EdgeInsets.all(3),
-      decoration: const BoxDecoration(
-        color: Colors.black,
-        shape: BoxShape.circle,
-      ),
-    )
-        : null;
-  }
 }
+
