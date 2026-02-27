@@ -10,11 +10,13 @@ class LastMove {
   final int playerIndex;
   final DominoPiece piece;
   final bool wasValid;
+  final PlayEnd end;
 
   const LastMove({
     required this.playerIndex,
     required this.piece,
     required this.wasValid,
+    required this.end,
   });
 }
 
