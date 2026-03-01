@@ -14,12 +14,14 @@ void main() {
 
   group('startGame', () {
     test('crea la partida con el número correcto de jugadores', () {
-      final state = logic.startGame(playerCount: 2);
+      final state =
+          logic.startGame(playerCount: 2, playerNames: ['Ana', 'Bob']);
       expect(state.players.length, 2);
     });
 
     test('cada jugador recibe 7 fichas', () {
-      final state = logic.startGame(playerCount: 2);
+      final state =
+          logic.startGame(playerCount: 2, playerNames: ['Ana', 'Bob']);
       final totalEnMano =
           state.players.fold<int>(0, (sum, p) => sum + p.hand.length);
       final totalEnTablero = state.boardChain.length;
@@ -27,31 +29,33 @@ void main() {
     });
 
     test('lanza error si el número de jugadores es inválido', () {
-      expect(() => logic.startGame(playerCount: 1), throwsArgumentError);
-      expect(() => logic.startGame(playerCount: 5), throwsArgumentError);
+      expect(() => logic.startGame(playerCount: 1, playerNames: ['Ana']),
+          throwsArgumentError);
+      expect(
+          () => logic.startGame(
+              playerCount: 5, playerNames: ['A', 'B', 'C', 'D', 'E']),
+          throwsArgumentError);
     });
   });
 
   group('playPiece - Mecánica de Trampa', () {
     test('ficha inválida SÍ aparece en el tablero (trampa)', () {
-      final state = GameState(
+      const state = GameState(
         players: [
-          Player(id: 0, hand: const [DominoPiece(a: 0, b: 1)]),
-          const Player(id: 1, hand: []),
+          Player(id: 0, name: 'Ana', hand: [DominoPiece(a: 0, b: 1)]),
+          Player(id: 1, name: 'Bob', hand: []),
         ],
-        boneyard: const [],
-        boardChain: const [DominoPiece(a: 3, b: 4)],
+        boneyard: [],
+        boardChain: [DominoPiece(a: 3, b: 4)],
         currentPlayerIndex: 0,
       );
 
-      // Jugar [0|1] a la derecha → inválido (0 != 4), pero se coloca igual.
       final newState = logic.playPiece(
         currentState: state,
         piece: const DominoPiece(a: 0, b: 1),
         end: PlayEnd.right,
       );
 
-      // La ficha SÍ aparece en el tablero (mecánica de trampa).
       expect(newState.boardChain.length, 2);
       expect(newState.lastMove!.wasValid, false);
       expect(newState.lastMove!.end, PlayEnd.right);
@@ -59,13 +63,13 @@ void main() {
     });
 
     test('ficha válida aparece en el tablero correctamente', () {
-      final state = GameState(
+      const state = GameState(
         players: [
-          Player(id: 0, hand: const [DominoPiece(a: 4, b: 5)]),
-          const Player(id: 1, hand: []),
+          Player(id: 0, name: 'Ana', hand: [DominoPiece(a: 4, b: 5)]),
+          Player(id: 1, name: 'Bob', hand: []),
         ],
-        boneyard: const [],
-        boardChain: const [DominoPiece(a: 3, b: 4)],
+        boneyard: [],
+        boardChain: [DominoPiece(a: 3, b: 4)],
         currentPlayerIndex: 0,
       );
 
@@ -80,17 +84,16 @@ void main() {
     });
 
     test('orientación elegida por el jugador se respeta', () {
-      final state = GameState(
+      const state = GameState(
         players: [
-          Player(id: 0, hand: const [DominoPiece(a: 3, b: 4)]),
-          const Player(id: 1, hand: []),
+          Player(id: 0, name: 'Ana', hand: [DominoPiece(a: 3, b: 4)]),
+          Player(id: 1, name: 'Bob', hand: []),
         ],
-        boneyard: const [],
-        boardChain: const [DominoPiece(a: 5, b: 5)],
+        boneyard: [],
+        boardChain: [DominoPiece(a: 5, b: 5)],
         currentPlayerIndex: 0,
       );
 
-      // Jugar [3|4] a la derecha → piece.a=3 != board.last.b=5 → inválido
       final result1 = logic.playPiece(
         currentState: state,
         piece: const DominoPiece(a: 3, b: 4),
@@ -98,14 +101,13 @@ void main() {
       );
       expect(result1.lastMove!.wasValid, false);
 
-      // Jugar [4|3] (flipped) a la derecha → piece.a=4 != 5 → también inválido
-      final state2 = GameState(
+      const state2 = GameState(
         players: [
-          Player(id: 0, hand: const [DominoPiece(a: 4, b: 3)]),
-          const Player(id: 1, hand: []),
+          Player(id: 0, name: 'Ana', hand: [DominoPiece(a: 4, b: 3)]),
+          Player(id: 1, name: 'Bob', hand: []),
         ],
-        boneyard: const [],
-        boardChain: const [DominoPiece(a: 5, b: 5)],
+        boneyard: [],
+        boardChain: [DominoPiece(a: 5, b: 5)],
         currentPlayerIndex: 0,
       );
       final result2 = logic.playPiece(
@@ -115,14 +117,13 @@ void main() {
       );
       expect(result2.lastMove!.wasValid, false);
 
-      // Jugar [5|3] a la derecha → piece.a=5 == board.last.b=5 → VÁLIDO
-      final state3 = GameState(
+      const state3 = GameState(
         players: [
-          Player(id: 0, hand: const [DominoPiece(a: 5, b: 3)]),
-          const Player(id: 1, hand: []),
+          Player(id: 0, name: 'Ana', hand: [DominoPiece(a: 5, b: 3)]),
+          Player(id: 1, name: 'Bob', hand: []),
         ],
-        boneyard: const [],
-        boardChain: const [DominoPiece(a: 5, b: 5)],
+        boneyard: [],
+        boardChain: [DominoPiece(a: 5, b: 5)],
         currentPlayerIndex: 0,
       );
       final result3 = logic.playPiece(
@@ -135,16 +136,18 @@ void main() {
   });
 
   group('accuse - Penalizaciones', () {
-    test('acusación correcta: tramposo roba 1 ficha y pieza se quita del tablero', () {
-      final state = GameState(
-        players: const [
-          Player(id: 0, hand: [DominoPiece(a: 1, b: 2)]),
-          Player(id: 1, hand: []),
+    test(
+        'acusación correcta: tramposo pierde turno y ficha se quita del tablero',
+        () {
+      const state = GameState(
+        players: [
+          Player(id: 0, name: 'Ana', hand: [DominoPiece(a: 1, b: 2)]),
+          Player(id: 1, name: 'Bob', hand: []),
         ],
-        boneyard: const [DominoPiece(a: 5, b: 5), DominoPiece(a: 6, b: 6)],
-        boardChain: const [DominoPiece(a: 3, b: 4), DominoPiece(a: 0, b: 1)],
+        boneyard: [DominoPiece(a: 5, b: 5), DominoPiece(a: 6, b: 6)],
+        boardChain: [DominoPiece(a: 3, b: 4), DominoPiece(a: 0, b: 1)],
         currentPlayerIndex: 1,
-        lastMove: const LastMove(
+        lastMove: LastMove(
           playerIndex: 0,
           piece: DominoPiece(a: 0, b: 1),
           wasValid: false,
@@ -160,19 +163,20 @@ void main() {
       // La ficha trampa fue removida del tablero
       expect(result.newState.boardChain.length, 1);
       expect(result.newState.boneyard.length, 1);
-      expect(result.newState.currentPlayerIndex, 0);
+      // Turno queda con el acusador (jugador 1), no vuelve al tramposo
+      expect(result.newState.currentPlayerIndex, 1);
     });
 
     test('acusación falsa: acusador roba 1 ficha de castigo', () {
-      final state = GameState(
-        players: const [
-          Player(id: 0, hand: [DominoPiece(a: 1, b: 2)]),
-          Player(id: 1, hand: []),
+      const state = GameState(
+        players: [
+          Player(id: 0, name: 'Ana', hand: [DominoPiece(a: 1, b: 2)]),
+          Player(id: 1, name: 'Bob', hand: []),
         ],
-        boneyard: const [DominoPiece(a: 5, b: 5), DominoPiece(a: 6, b: 6)],
-        boardChain: const [DominoPiece(a: 3, b: 4)],
+        boneyard: [DominoPiece(a: 5, b: 5), DominoPiece(a: 6, b: 6)],
+        boardChain: [DominoPiece(a: 3, b: 4)],
         currentPlayerIndex: 1,
-        lastMove: const LastMove(
+        lastMove: LastMove(
           playerIndex: 0,
           piece: DominoPiece(a: 3, b: 4),
           wasValid: true,
@@ -192,8 +196,8 @@ void main() {
     test('detecta cuando todos los jugadores están bloqueados', () {
       const state = GameState(
         players: [
-          Player(id: 0, hand: [DominoPiece(a: 0, b: 0)]),
-          Player(id: 1, hand: [DominoPiece(a: 1, b: 1)]),
+          Player(id: 0, name: 'Ana', hand: [DominoPiece(a: 0, b: 0)]),
+          Player(id: 1, name: 'Bob', hand: [DominoPiece(a: 1, b: 1)]),
         ],
         boneyard: [],
         boardChain: [DominoPiece(a: 5, b: 6)],
@@ -205,8 +209,8 @@ void main() {
     test('no detecta bloqueo si alguien puede jugar', () {
       const state = GameState(
         players: [
-          Player(id: 0, hand: [DominoPiece(a: 5, b: 3)]),
-          Player(id: 1, hand: [DominoPiece(a: 1, b: 1)]),
+          Player(id: 0, name: 'Ana', hand: [DominoPiece(a: 5, b: 3)]),
+          Player(id: 1, name: 'Bob', hand: [DominoPiece(a: 1, b: 1)]),
         ],
         boneyard: [],
         boardChain: [DominoPiece(a: 5, b: 6)],

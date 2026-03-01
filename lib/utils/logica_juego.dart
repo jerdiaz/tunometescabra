@@ -28,7 +28,25 @@ class GameLogic {
     return deck;
   }
 
-  GameState startGame({required int playerCount}) {
+  /// Calcula el siguiente índice de jugador activo.
+  int _nextActivePlayer(List<Player> players, int current) {
+    final n = players.length;
+    int next = (current + 1) % n;
+    int attempts = 0;
+    while (!players[next].isActive && attempts < n) {
+      next = (next + 1) % n;
+      attempts++;
+    }
+    return next;
+  }
+
+  /// Cuenta los jugadores activos.
+  int _activeCount(List<Player> players) {
+    return players.where((p) => p.isActive).length;
+  }
+
+  GameState startGame(
+      {required int playerCount, required List<String> playerNames}) {
     if (playerCount < 2 || playerCount > 4) {
       throw ArgumentError('El número de jugadores debe estar entre 2 y 4.');
     }
@@ -41,6 +59,7 @@ class GameLogic {
     for (int i = 0; i < playerCount; i++) {
       players.add(Player(
           id: i,
+          name: i < playerNames.length ? playerNames[i] : 'Jugador ${i + 1}',
           hand: deck.sublist(cardsDealt, cardsDealt + tilesPerPlayer)));
       cardsDealt += tilesPerPlayer;
     }
@@ -79,29 +98,78 @@ class GameLogic {
       players: players,
       boneyard: boneyard,
       boardChain: boardChain,
-      currentPlayerIndex:
-          (startingPlayerIndex + (startingPiece != null ? 1 : 0)) %
-              playerCount,
+      currentPlayerIndex: _nextActivePlayer(
+          players, startingPlayerIndex + (startingPiece != null ? 0 : -1)),
     );
   }
 
-  // La ficha ya viene en la orientación elegida por el jugador.
-  // Se coloca SIEMPRE en el tablero (para la mecánica de trampa).
+  // ═══════════════════════════════════════════════════
+  // ELIMINATE PLAYER (abandono)
+  // ═══════════════════════════════════════════════════
+
+  /// Elimina un jugador (abandono). Sus fichas pasan al pozo.
+  /// Si solo queda 1 jugador activo, gana automáticamente.
+  GameState eliminatePlayer({
+    required GameState currentState,
+    required int playerIndex,
+  }) {
+    final updatedPlayers =
+        List<Player>.from(currentState.players.map((p) => p.copyWith()));
+    final newBoneyard = List<DominoPiece>.from(currentState.boneyard);
+
+    // Pasar fichas del jugador eliminado al pozo
+    final eliminatedHand = updatedPlayers[playerIndex].hand;
+    newBoneyard.addAll(eliminatedHand);
+    newBoneyard.shuffle(Random());
+
+    updatedPlayers[playerIndex] = updatedPlayers[playerIndex].copyWith(
+      hand: [],
+      isActive: false,
+    );
+
+    // Verificar si solo queda 1 jugador activo
+    final activeCount = _activeCount(updatedPlayers);
+    if (activeCount <= 1) {
+      final winnerIndex = updatedPlayers.indexWhere((p) => p.isActive);
+      return currentState.copyWith(
+        players: updatedPlayers,
+        boneyard: newBoneyard,
+        isGameOver: true,
+        winnerIndex: winnerIndex >= 0 ? winnerIndex : 0,
+        clearAccusation: true,
+      );
+    }
+
+    // Si era el turno del eliminado, avanzar al siguiente activo
+    int newCurrentIndex = currentState.currentPlayerIndex;
+    if (newCurrentIndex == playerIndex) {
+      newCurrentIndex = _nextActivePlayer(updatedPlayers, playerIndex);
+    }
+
+    return currentState.copyWith(
+      players: updatedPlayers,
+      boneyard: newBoneyard,
+      currentPlayerIndex: newCurrentIndex,
+      clearLastMove: true,
+      clearAccusation: true,
+    );
+  }
+
+  // ═══════════════════════════════════════════════════
+  // PLAY PIECE
+  // ═══════════════════════════════════════════════════
+
   GameState playPiece({
     required GameState currentState,
     required DominoPiece piece,
     required PlayEnd end,
   }) {
-    final playerCount = currentState.players.length;
-    final currentPlayer =
-        currentState.players[currentState.currentPlayerIndex];
+    final currentPlayer = currentState.players[currentState.currentPlayerIndex];
     if (!currentPlayer.hand.contains(piece)) return currentState;
 
-    // Quitamos la ficha de la mano.
     final newHand = List<DominoPiece>.from(currentPlayer.hand)..remove(piece);
     final newBoardChain = List<DominoPiece>.from(currentState.boardChain);
 
-    // Verificar validez según la orientación elegida por el jugador.
     bool wasValid;
     if (newBoardChain.isEmpty) {
       wasValid = true;
@@ -111,7 +179,6 @@ class GameLogic {
       wasValid = piece.a == newBoardChain.last.b;
     }
 
-    // SIEMPRE colocar la ficha en el tablero (trampa incluida).
     if (newBoardChain.isEmpty) {
       newBoardChain.add(piece);
     } else if (end == PlayEnd.left) {
@@ -124,13 +191,14 @@ class GameLogic {
     updatedPlayers[currentState.currentPlayerIndex] =
         currentPlayer.copyWith(hand: newHand);
 
-    final bool isGameOver = wasValid && newHand.isEmpty;
+    final bool isGameOver = newHand.isEmpty;
+    final nextPlayer =
+        _nextActivePlayer(updatedPlayers, currentState.currentPlayerIndex);
 
     return currentState.copyWith(
       players: updatedPlayers,
       boardChain: newBoardChain,
-      currentPlayerIndex:
-          (currentState.currentPlayerIndex + 1) % playerCount,
+      currentPlayerIndex: nextPlayer,
       lastMove: LastMove(
         playerIndex: currentState.currentPlayerIndex,
         piece: piece,
@@ -139,14 +207,18 @@ class GameLogic {
       ),
       isGameOver: isGameOver,
       winnerIndex: isGameOver ? currentState.currentPlayerIndex : null,
+      clearAccusation: true,
     );
   }
+
+  // ═══════════════════════════════════════════════════
+  // DRAW PIECE
+  // ═══════════════════════════════════════════════════
 
   GameState drawPiece({required GameState currentState}) {
     if (currentState.boneyard.isEmpty) return currentState;
 
-    final currentPlayer =
-        currentState.players[currentState.currentPlayerIndex];
+    final currentPlayer = currentState.players[currentState.currentPlayerIndex];
     final newHand = List<DominoPiece>.from(currentPlayer.hand);
     final newBoneyard = List<DominoPiece>.from(currentState.boneyard);
     newHand.add(newBoneyard.removeAt(0));
@@ -158,8 +230,13 @@ class GameLogic {
       players: updatedPlayers,
       boneyard: newBoneyard,
       clearLastMove: true,
+      clearAccusation: true,
     );
   }
+
+  // ═══════════════════════════════════════════════════
+  // ACCUSE
+  // ═══════════════════════════════════════════════════
 
   AccusationResult accuse({required GameState currentState}) {
     final lastMove = currentState.lastMove;
@@ -167,31 +244,29 @@ class GameLogic {
       return AccusationResult(newState: currentState, wasCheating: false);
     }
 
-    final updatedPlayers = List<Player>.from(
-        currentState.players.map((p) => p.copyWith()));
+    final updatedPlayers =
+        List<Player>.from(currentState.players.map((p) => p.copyWith()));
     final newBoneyard = List<DominoPiece>.from(currentState.boneyard);
-    final playerCount = currentState.players.length;
+    final accuserIndex = currentState.currentPlayerIndex;
 
     if (!lastMove.wasValid) {
-      // Acusación CORRECTA
+      // ═══ Acusación CORRECTA ═══
       final cheaterIndex = lastMove.playerIndex;
       final cheaterHand =
           List<DominoPiece>.from(updatedPlayers[cheaterIndex].hand);
-      final newBoardChain =
-          List<DominoPiece>.from(currentState.boardChain);
+      final newBoardChain = List<DominoPiece>.from(currentState.boardChain);
 
-      // Devolver la ficha al tramposo.
       cheaterHand.add(lastMove.piece);
 
-      // Quitar la ficha del tablero usando el lado donde fue jugada.
       if (lastMove.end == PlayEnd.left && newBoardChain.isNotEmpty) {
         newBoardChain.removeAt(0);
       } else if (lastMove.end == PlayEnd.right && newBoardChain.isNotEmpty) {
         newBoardChain.removeLast();
       }
 
-      // Castigo: el tramposo roba 1 ficha del pozo.
-      if (newBoneyard.isNotEmpty) {
+      // Castigo: roba 1 ficha (solo si <4 jugadores activos)
+      final activeCount = _activeCount(updatedPlayers);
+      if (activeCount < 4 && newBoneyard.isNotEmpty) {
         cheaterHand.add(newBoneyard.removeAt(0));
       }
       updatedPlayers[cheaterIndex] =
@@ -202,21 +277,31 @@ class GameLogic {
           players: updatedPlayers,
           boneyard: newBoneyard,
           boardChain: newBoardChain,
-          currentPlayerIndex: cheaterIndex,
+          currentPlayerIndex: accuserIndex,
+          isGameOver: false,
+          winnerIndex: null,
           clearLastMove: true,
+          lastAccusation: AccusationEvent(
+            accuserIndex: accuserIndex,
+            cheaterIndex: cheaterIndex,
+            wasCheating: true,
+          ),
         ),
         wasCheating: true,
       );
     } else {
-      // Acusación FALSA
-      final accuserIndex = currentState.currentPlayerIndex;
-
+      // ═══ Acusación FALSA ═══
       if (newBoneyard.isEmpty) {
         return AccusationResult(
           newState: currentState.copyWith(
-            currentPlayerIndex:
-                (currentState.currentPlayerIndex + 1) % playerCount,
+            currentPlayerIndex: _nextActivePlayer(updatedPlayers, accuserIndex),
             clearLastMove: true,
+            lastAccusation: AccusationEvent(
+              accuserIndex: accuserIndex,
+              cheaterIndex: lastMove.playerIndex,
+              wasCheating: false,
+              turnSkipped: true,
+            ),
           ),
           wasCheating: false,
           turnSkipped: true,
@@ -224,9 +309,7 @@ class GameLogic {
       } else {
         final accuserHand =
             List<DominoPiece>.from(updatedPlayers[accuserIndex].hand);
-        if (newBoneyard.isNotEmpty) {
-          accuserHand.add(newBoneyard.removeAt(0));
-        }
+        accuserHand.add(newBoneyard.removeAt(0));
         updatedPlayers[accuserIndex] =
             updatedPlayers[accuserIndex].copyWith(hand: accuserHand);
 
@@ -235,6 +318,11 @@ class GameLogic {
             players: updatedPlayers,
             boneyard: newBoneyard,
             clearLastMove: true,
+            lastAccusation: AccusationEvent(
+              accuserIndex: accuserIndex,
+              cheaterIndex: lastMove.playerIndex,
+              wasCheating: false,
+            ),
           ),
           wasCheating: false,
         );
@@ -242,12 +330,16 @@ class GameLogic {
     }
   }
 
+  // ═══════════════════════════════════════════════════
+  // PASS TURN
+  // ═══════════════════════════════════════════════════
+
   GameState passTurn({required GameState currentState}) {
-    final playerCount = currentState.players.length;
     return currentState.copyWith(
-      currentPlayerIndex:
-          (currentState.currentPlayerIndex + 1) % playerCount,
+      currentPlayerIndex: _nextActivePlayer(
+          currentState.players, currentState.currentPlayerIndex),
       clearLastMove: true,
+      clearAccusation: true,
     );
   }
 
@@ -259,9 +351,12 @@ class GameLogic {
     final rightValue = state.boardChain.last.b;
 
     for (var player in state.players) {
+      if (!player.isActive) continue;
       for (var piece in player.hand) {
-        if (piece.a == leftValue || piece.b == leftValue ||
-            piece.a == rightValue || piece.b == rightValue) {
+        if (piece.a == leftValue ||
+            piece.b == leftValue ||
+            piece.a == rightValue ||
+            piece.b == rightValue) {
           return false;
         }
       }
@@ -273,6 +368,7 @@ class GameLogic {
     int lowestScore = 999;
     int winnerIndex = 0;
     for (int i = 0; i < state.players.length; i++) {
+      if (!state.players[i].isActive) continue;
       int score = 0;
       for (var piece in state.players[i].hand) {
         score += piece.a + piece.b;

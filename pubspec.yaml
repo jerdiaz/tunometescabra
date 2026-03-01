@@ -12,12 +12,12 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Añadimos el gestor de estado Provider.
-  # Esencial para conectar la lógica del juego con la UI.
   provider: ^6.1.2
-
-  # Iconos de Cupertino para un estilo iOS.
   cupertino_icons: ^1.0.2
+
+  # Firebase para multijugador online
+  firebase_core: ^3.12.1
+  cloud_firestore: ^5.6.5
 
 dev_dependencies:
   flutter_test:

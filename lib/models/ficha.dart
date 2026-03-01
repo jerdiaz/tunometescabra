@@ -12,6 +12,11 @@ class DominoPiece {
 
   DominoPiece get flipped => DominoPiece(a: b, b: a);
 
+  Map<String, dynamic> toMap() => {'a': a, 'b': b};
+
+  factory DominoPiece.fromMap(Map<String, dynamic> m) =>
+      DominoPiece(a: m['a'] as int, b: m['b'] as int);
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;

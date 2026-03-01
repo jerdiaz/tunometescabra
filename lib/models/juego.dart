@@ -18,6 +18,50 @@ class LastMove {
     required this.wasValid,
     required this.end,
   });
+
+  Map<String, dynamic> toMap() => {
+        'playerIndex': playerIndex,
+        'piece': piece.toMap(),
+        'wasValid': wasValid,
+        'end': end == PlayEnd.left ? 'left' : 'right',
+      };
+
+  factory LastMove.fromMap(Map<String, dynamic> m) => LastMove(
+        playerIndex: m['playerIndex'] as int,
+        piece: DominoPiece.fromMap(Map<String, dynamic>.from(m['piece'])),
+        wasValid: m['wasValid'] as bool,
+        end: m['end'] == 'left' ? PlayEnd.left : PlayEnd.right,
+      );
+}
+
+/// Evento de acusación que se sincroniza entre jugadores vía Firestore.
+@immutable
+class AccusationEvent {
+  final int accuserIndex;
+  final int cheaterIndex;
+  final bool wasCheating;
+  final bool turnSkipped; // Acusación falsa sin pozo → pierde turno
+
+  const AccusationEvent({
+    required this.accuserIndex,
+    required this.cheaterIndex,
+    required this.wasCheating,
+    this.turnSkipped = false,
+  });
+
+  Map<String, dynamic> toMap() => {
+        'accuserIndex': accuserIndex,
+        'cheaterIndex': cheaterIndex,
+        'wasCheating': wasCheating,
+        'turnSkipped': turnSkipped,
+      };
+
+  factory AccusationEvent.fromMap(Map<String, dynamic> m) => AccusationEvent(
+        accuserIndex: m['accuserIndex'] as int,
+        cheaterIndex: m['cheaterIndex'] as int,
+        wasCheating: m['wasCheating'] as bool,
+        turnSkipped: m['turnSkipped'] as bool? ?? false,
+      );
 }
 
 @immutable
@@ -29,6 +73,7 @@ class GameState {
   final LastMove? lastMove;
   final bool isGameOver;
   final int? winnerIndex;
+  final AccusationEvent? lastAccusation;
 
   const GameState({
     required this.players,
@@ -38,16 +83,14 @@ class GameState {
     this.lastMove,
     this.isGameOver = false,
     this.winnerIndex,
+    this.lastAccusation,
   });
 
-  // ----- ESTA ES LA CORRECCIÓN CLAVE -----
-  // Ahora el estado inicial simula una partida de 2 jugadores por defecto.
-  // Esto evita que la UI se quede "cargando" antes de que el juego real comience.
   factory GameState.initial() {
     return const GameState(
       players: [
-        Player(id: 0, hand: []),
-        Player(id: 1, hand: [])
+        Player(id: 0, name: 'Jugador 1', hand: []),
+        Player(id: 1, name: 'Jugador 2', hand: [])
       ],
       boneyard: [],
       boardChain: [],
@@ -63,7 +106,9 @@ class GameState {
     LastMove? lastMove,
     bool? isGameOver,
     int? winnerIndex,
+    AccusationEvent? lastAccusation,
     bool clearLastMove = false,
+    bool clearAccusation = false,
   }) {
     return GameState(
       players: players ?? this.players,
@@ -73,7 +118,41 @@ class GameState {
       lastMove: clearLastMove ? null : lastMove ?? this.lastMove,
       isGameOver: isGameOver ?? this.isGameOver,
       winnerIndex: winnerIndex ?? this.winnerIndex,
+      lastAccusation:
+          clearAccusation ? null : lastAccusation ?? this.lastAccusation,
     );
   }
-}
 
+  Map<String, dynamic> toMap() => {
+        'players': players.map((p) => p.toMap()).toList(),
+        'boneyard': boneyard.map((p) => p.toMap()).toList(),
+        'boardChain': boardChain.map((p) => p.toMap()).toList(),
+        'currentPlayerIndex': currentPlayerIndex,
+        'lastMove': lastMove?.toMap(),
+        'isGameOver': isGameOver,
+        'winnerIndex': winnerIndex,
+        'lastAccusation': lastAccusation?.toMap(),
+      };
+
+  factory GameState.fromMap(Map<String, dynamic> m) => GameState(
+        players: (m['players'] as List)
+            .map((p) => Player.fromMap(Map<String, dynamic>.from(p)))
+            .toList(),
+        boneyard: (m['boneyard'] as List)
+            .map((p) => DominoPiece.fromMap(Map<String, dynamic>.from(p)))
+            .toList(),
+        boardChain: (m['boardChain'] as List)
+            .map((p) => DominoPiece.fromMap(Map<String, dynamic>.from(p)))
+            .toList(),
+        currentPlayerIndex: m['currentPlayerIndex'] as int,
+        lastMove: m['lastMove'] != null
+            ? LastMove.fromMap(Map<String, dynamic>.from(m['lastMove']))
+            : null,
+        isGameOver: m['isGameOver'] as bool? ?? false,
+        winnerIndex: m['winnerIndex'] as int?,
+        lastAccusation: m['lastAccusation'] != null
+            ? AccusationEvent.fromMap(
+                Map<String, dynamic>.from(m['lastAccusation']))
+            : null,
+      );
+}

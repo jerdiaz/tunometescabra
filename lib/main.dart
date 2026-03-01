@@ -1,16 +1,22 @@
 // FILE: lib/main.dart
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'providers/game_provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'screens/menu_principal.dart';
 
-void main() {
-  runApp(
-    ChangeNotifierProvider(
-      create: (context) => GameProvider(),
-      child: const MyApp(),
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: const FirebaseOptions(
+      apiKey: 'AIzaSyBpKeCkPMb9HfcByCgUQeIc1X-xQAPgJsk',
+      authDomain: 'tunometescabra-c7741.firebaseapp.com',
+      projectId: 'tunometescabra-c7741',
+      storageBucket: 'tunometescabra-c7741.firebasestorage.app',
+      messagingSenderId: '645911941700',
+      appId: '1:645911941700:web:298924dd43066cc87da211',
+      measurementId: 'G-3EQH009JPL',
     ),
   );
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -45,8 +51,10 @@ class MyApp extends StatelessWidget {
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            textStyle:
+                const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           ),
         ),
       ),
